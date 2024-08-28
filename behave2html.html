@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script>
+
+const processJSON = event => {
+  const reader = new FileReader();
+  reader.addEventListener('load', ev => {
+    document.getElementById('report').replaceWith(renderReport(JSON.parse(ev.target.result)));
+  });
+  reader.readAsText(event.target.files[0]);
+};
+
+const renderReport = reportData => {
+  const node = document.getElementById('report-template').content.cloneNode(true).children[0];
+  reportData.forEach(featureData => node.append(renderFeature(featureData)));
+  return node;
+};
+
+const renderFeature = featureData => {
+  const node = document.getElementById('feature-template').content.cloneNode(true).children[0];
+  node.classList.add('feature-'+featureData.status);
+  node.querySelector('.tags').textContent = renderTags(featureData.tags);
+  node.querySelector('.name').textContent = featureData.name;
+  node.querySelector('.location').textContent = featureData.location;
+  const elements = node.querySelector('.elements');
+  featureData.elements.forEach(scenarioData => {
+    switch (scenarioData.keyword) {
+      case 'Background':
+        break;
+      case 'Scenario':
+        elements.append(renderScenario(scenarioData));
+    }
+  });
+  return node;
+};
+
+const renderScenario = scenarioData => {
+  const node = document.getElementById('scenario-template').content.cloneNode(true).children[0];
+  node.classList.add('scenario-'+scenarioData.status);
+  node.querySelector('.tags').textContent = renderTags(scenarioData.tags);
+  node.querySelector('.name').textContent = scenarioData.name;
+  node.querySelector('.location').textContent = scenarioData.location;
+  const elements = node.querySelector('.steps');
+  scenarioData.steps.forEach(stepData => elements.append(renderStep(stepData)));
+  return node;
+}
+
+const renderTags = tagData => {
+  return tagData.map(tag => '@'+tag).join(' ');
+}
+
+const renderStep = stepData => {
+  const node = document.getElementById('step-template').content.cloneNode(true).children[0];
+  if (stepData.result) {
+    node.classList.add('step-'+stepData.result.status);
+  }
+  node.querySelector('.keyword').textContent = stepData.keyword;
+  node.querySelector('.name').textContent = stepData.name;
+  node.querySelector('.location').textContent = stepData.location;
+  if (stepData.result) {
+    node.querySelector('.duration').textContent = parseInt(1000*stepData.result.duration)+'ms';
+  }
+  if (stepData.text) {
+    node.querySelector('.text').textContent = stepData.text.join('\n');
+  }
+  else {
+    node.querySelector('.text').style.display = 'none';
+  }
+  if (stepData.result && stepData.result.error_message) {
+    node.querySelector('.error').textContent = stepData.result.error_message.join('\n');
+  }
+  else {
+    node.querySelector('.error').style.display = 'none';
+  }
+  return node;
+}
+
+</script>
+<style>
+
+body {
+  max-width: 120ch;
+  margin: auto;
+}
+
+#report,
+.elements {
+  list-style-type: none;
+}
+
+#report {
+  padding-inline: 2rem;
+}
+
+.feature:not(:last-of-type) > details[open] ,
+.scenario:not(:last-of-type) > details[open] {
+  margin-block-end: 1em;
+}
+
+summary {
+  cursor: pointer;
+}
+
+summary,
+.step > div {
+  position: relative;
+}
+
+.location {
+  position: absolute;
+  right: 0;
+}
+
+.duration {
+  display: inline-block;
+  margin-left: 1em;
+}
+
+.keyword,
+.tags {
+  font-weight: bold;
+}
+
+.location,
+.duration,
+.tags {
+  color: grey;
+}
+
+
+.feature-skipped > details > summary .name,
+.scenario-skipped .name,
+.step .keyword {
+  color: darkcyan;
+}
+
+.feature-passed .name,
+.scenario-passed .name,
+.step-passed .keyword,
+.step-passed .name {
+  color: darkgreen;
+}
+
+.feature-failed > details > summary .name,
+.scenario-failed > details > summary .name,
+.step-failed .keyword,
+.step-failed .name {
+  color: red !important;
+}
+
+.error {
+  overflow-x: auto;  
+  color: white;
+  background-color: black;
+}
+</style>
+</head>
+
+<body>
+
+<input type="file" accept=".json" onchange="processJSON(event)">
+<label><input name="render-passed" type="checkbox" checked> passed</label>
+<label><input name="render-failed" type="checkbox" checked> failed</label>
+<label><input name="render-skipped" type="checkbox" checked> skipped</label>
+<label><input name="render-undefined" type="checkbox" checked> undefined</label>
+<!-- TODO: expand/collapse all -->
+<!-- TODO: filter by status -->
+<!-- TODO: summary stats -->
+<!-- TODO: monitor unreported data -->
+
+<ul id="report"></ul>
+
+<template id="report-template">
+  <ul id="report"></ul>
+</template>
+
+<template id="feature-template">
+  <li class="feature">
+    <details>
+      <summary>
+        <span class="tags"></span>
+        Feature:
+        <span class="name"></span>
+        <span class="location"></span>
+      </summary>
+      <ul class="elements"></ul>
+    </details>
+  </li>
+</template>
+
+<template id="scenario-template">
+  <li class="scenario">
+    <details>
+      <summary>
+        <span class="tags"></span>
+        <span class="name"></span>
+        <span class="location"></span>
+      </summary>
+      <ol class="steps"></ol>
+    </details>
+  </li>
+</template>
+
+<template id="step-template">
+  <li class="step">
+    <div>
+      <span class="keyword"></span>
+      <span class="name"></span>
+      <span class="location"></span>
+      <span class="duration"></span>
+    </div>
+    <pre class="text"></pre>
+    <pre class="error"></pre>
+  </li>
+</template>
+
+</body>
+</html>
