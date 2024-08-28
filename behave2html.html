@@ -37,6 +37,9 @@ const renderFeature = featureData => {
 
 const renderScenario = scenarioData => {
   const node = document.getElementById('scenario-template').content.cloneNode(true).children[0];
+  node.style.display = document.querySelector(
+    `#controls input[name="show-${scenarioData.status || 'skipped'}"]`
+  ).checked ? 'list-item' : 'none';
   node.classList.add('scenario-'+scenarioData.status);
   node.querySelector('.tags').textContent = renderTags(scenarioData.tags);
   node.querySelector('.name').textContent = scenarioData.name;
@@ -76,12 +79,22 @@ const renderStep = stepData => {
   return node;
 }
 
+const toggle = (event, status) => {
+  document.querySelectorAll('.scenario-'+status).forEach(element => {
+    element.style.display = event.target.checked ? 'list-item' : 'none';
+  });
+}
+
 </script>
 <style>
 
 body {
   max-width: 120ch;
   margin: auto;
+}
+
+#controls {
+  margin: 1rem 2rem;
 }
 
 #report,
@@ -159,15 +172,28 @@ summary,
 
 <body>
 
-<input type="file" accept=".json" onchange="processJSON(event)">
-<label><input name="render-passed" type="checkbox" checked> passed</label>
-<label><input name="render-failed" type="checkbox" checked> failed</label>
-<label><input name="render-skipped" type="checkbox" checked> skipped</label>
-<label><input name="render-undefined" type="checkbox" checked> undefined</label>
-<!-- TODO: expand/collapse all -->
-<!-- TODO: filter by status -->
+<form id="controls">
+  <input name="file" type="file" accept=".json" onchange="processJSON(event)">
+  <label>
+    <input name="show-passed" type="checkbox" checked onchange="toggle(event, 'passed')">
+    passed
+  </label>
+  <label>
+    <input name="show-failed" type="checkbox" checked onchange="toggle(event, 'failed')">
+    failed
+  </label>
+  <label>
+    <input name="show-skipped" type="checkbox" checked onchange="toggle(event, 'skipped')">
+    skipped
+  </label>
+  <label>
+    <input name="show-undefined" type="checkbox" checked onchange="toggle(event, 'undefined')">
+    undefined
+  </label>
+</form>
 <!-- TODO: summary stats -->
 <!-- TODO: monitor unreported data -->
+<!-- TODO: expand/collapse all -->
 
 <ul id="report"></ul>
 
