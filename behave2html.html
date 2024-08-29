@@ -6,7 +6,9 @@
 const processJSON = event => {
   const reader = new FileReader();
   reader.addEventListener('load', ev => {
-    document.getElementById('report').replaceWith(renderReport(JSON.parse(ev.target.result)));
+    const reportData = JSON.parse(ev.target.result);
+    document.getElementById('report').replaceWith(renderReport(reportData));
+    renderStats(calculateStats(reportData));
   });
   reader.readAsText(event.target.files[0]);
 };
@@ -79,6 +81,42 @@ const renderStep = stepData => {
   return node;
 }
 
+const calculateStats = reportData => {
+  return {
+    'features': {
+      'passed': reportData.filter(feature => feature.status === 'passed').length,
+      'failed': reportData.filter(feature => feature.status === 'failed').length,
+      'skipped': reportData.filter(feature => feature.status === 'skipped').length,
+      'undefined': reportData.filter(feature => feature.status === 'undefined').length,
+    },
+    'scenarios': {
+      'passed': reportData.map(feature => feature.elements.filter(scenario => scenario.status === 'passed').length).reduce((agg, val) => agg + val),
+      'failed': reportData.map(feature => feature.elements.filter(scenario => scenario.status === 'failed').length).reduce((agg, val) => agg + val),
+      'skipped': reportData.map(feature => feature.elements.filter(scenario => scenario.status === 'skipped').length).reduce((agg, val) => agg + val),
+      'undefined': reportData.map(feature => feature.elements.filter(scenario => scenario.status === 'undefined').length).reduce((agg, val) => agg + val),
+    },
+    'steps': {
+      'passed': reportData.map(feature => feature.elements.map(scenario => scenario.steps.filter(step => step.result && step.result.status === 'passed').length).reduce((agg, val) => agg + val)).reduce((agg, val) => agg + val),
+      'failed': reportData.map(feature => feature.elements.map(scenario => scenario.steps.filter(step => step.result && step.result.status === 'failed').length).reduce((agg, val) => agg + val)).reduce((agg, val) => agg + val),
+      'skipped': reportData.map(feature => feature.elements.map(scenario => scenario.steps.filter(step => step.result === undefined).length).reduce((agg, val) => agg + val)).reduce((agg, val) => agg + val),
+      'undefined': reportData.map(feature => feature.elements.map(scenario => scenario.steps.filter(step => step.result && step.result.status === 'undefined').length).reduce((agg, val) => agg + val)).reduce((agg, val) => agg + val),
+    },
+  }
+}
+
+const renderStats = stats => {
+  for (let category of ['features', 'scenarios', 'steps']) {
+    const values = Object.values(stats[category]);
+    const cumSum = values.map((sum => value => sum += value)(0)); // https://stackoverflow.com/a/55261098/4415526
+    const perc = cumSum.map(value => (100*value/cumSum[cumSum.length-1])+'%');
+    const element = document.querySelector('#pie-stats .'+category);
+    element.setAttribute('title', `${values[0]} passed, ${values[1]} failed, ${values[2]} skipped, ${values[3]} undefined`); 
+    element.style.background = `conic-gradient(var(--color-passed) 0 ${perc[0]}, var(--color-failed) 0 ${perc[1]}, var(--color-skipped) 0 ${perc[2]}, var(--color-undefined) 0 100%)`;
+    element.querySelector('.total').textContent = cumSum[cumSum.length-1];
+  }
+};
+
+
 const toggle = (event, status) => {
   document.querySelectorAll('.scenario-'+status).forEach(element => {
     element.style.display = event.target.checked ? 'list-item' : 'none';
@@ -88,6 +126,13 @@ const toggle = (event, status) => {
 </script>
 <style>
 
+:root {
+  --color-passed: #8BC34A;
+  --color-failed: #FF5722;
+  --color-skipped: #00BCD4;
+  --color-undefined: #9E9E9E;
+}
+
 body {
   max-width: 120ch;
   margin: auto;
@@ -95,6 +140,35 @@ body {
 
 #controls {
   margin: 1rem 2rem;
+}
+
+#pie-stats {
+  display: flex;
+  width: fit-content;
+  margin: auto;
+  gap: 2rem;
+}
+
+#pie-stats > div {
+  --chart-size: 9rem;
+  --label-size: 6rem;
+  position: relative;
+  border-radius: 50%;
+  width: var(--chart-size);
+  height: var(--chart-size);
+}
+
+#pie-stats > div > div {
+  position: absolute;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  background-color: white;
+  left: calc( ( var(--chart-size) - var(--label-size) ) / 2 );
+  top: calc( ( var(--chart-size) - var(--label-size) ) / 2 );
+  width: var(--label-size);
+  height: var(--label-size);
 }
 
 #report,
@@ -145,21 +219,24 @@ summary,
 .feature-skipped > details > summary .name,
 .scenario-skipped .name,
 .step .keyword {
-  color: darkcyan;
+  color: var(--color-skipped);
+  filter: brightness(80%);
 }
 
 .feature-passed .name,
 .scenario-passed .name,
 .step-passed .keyword,
 .step-passed .name {
-  color: darkgreen;
+  color: var(--color-passed);
+  filter: brightness(80%);
 }
 
 .feature-failed > details > summary .name,
 .scenario-failed > details > summary .name,
 .step-failed .keyword,
 .step-failed .name {
-  color: red !important;
+  color: var(--color-failed) !important;
+  filter: brightness(80%);
 }
 
 .error {
@@ -191,19 +268,23 @@ summary,
     undefined
   </label>
 </form>
-<!-- TODO: summary stats -->
 <!-- TODO: monitor unreported data -->
 <!-- TODO: expand/collapse all -->
+
+<div id="pie-stats">
+  <div class="steps" style="background: lightgrey"><div><span class="total">0</span>&nbsp;Steps</div></div>
+  <div class="scenarios" style="background: lightgrey"><div><span class="total">0</span>&nbsp;Scenarios</div></div>
+  <div class="features" style="background: lightgrey"><div><span class="total">0</span>&nbsp;Features</div></div>
+</div>
 
 <ul id="report"></ul>
 
 <template id="report-template">
   <ul id="report"></ul>
 </template>
-
 <template id="feature-template">
   <li class="feature">
-    <details>
+    <details open>
       <summary>
         <span class="tags"></span>
         Feature:
@@ -214,7 +295,6 @@ summary,
     </details>
   </li>
 </template>
-
 <template id="scenario-template">
   <li class="scenario">
     <details>
@@ -227,7 +307,6 @@ summary,
     </details>
   </li>
 </template>
-
 <template id="step-template">
   <li class="step">
     <div>
