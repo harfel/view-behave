@@ -82,24 +82,96 @@ const renderStep = stepData => {
 }
 
 const calculateStats = reportData => {
+  const show = {
+    'passed': document.querySelector('#controls [name="show-passed"]').checked,
+    'failed': document.querySelector('#controls [name="show-failed"]').checked,
+    'skipped': document.querySelector('#controls [name="show-skipped"]').checked,
+    'undefined': document.querySelector('#controls [name="show-undefined"]').checked,
+  };
+
   return {
     'features': {
-      'passed': reportData.filter(feature => feature.status === 'passed').length,
-      'failed': reportData.filter(feature => feature.status === 'failed').length,
-      'skipped': reportData.filter(feature => feature.status === 'skipped').length,
-      'undefined': reportData.filter(feature => feature.status === 'undefined').length,
+      'passed': reportData
+                  .filter(feature => feature.elements
+                                            .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                            .length
+                                     && feature.status === 'passed')
+                  .length,
+      'failed': reportData
+                  .filter(feature => feature.elements
+                                            .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                            .length
+                                     && feature.status === 'failed')
+                  .length,
+      'skipped': reportData
+                  .filter(feature => feature.elements
+                                            .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                            .length
+                                     && feature.status === 'skipped')
+                  .length,
+      'undefined': reportData
+                  .filter(feature => feature.elements
+                                            .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                            .length
+                                     && feature.status === 'undefined')
+                  .length,
     },
     'scenarios': {
-      'passed': reportData.map(feature => feature.elements.filter(scenario => scenario.status === 'passed').length).reduce((agg, val) => agg + val),
-      'failed': reportData.map(feature => feature.elements.filter(scenario => scenario.status === 'failed').length).reduce((agg, val) => agg + val),
-      'skipped': reportData.map(feature => feature.elements.filter(scenario => scenario.status === 'skipped').length).reduce((agg, val) => agg + val),
-      'undefined': reportData.map(feature => feature.elements.filter(scenario => scenario.status === 'undefined').length).reduce((agg, val) => agg + val),
+      'passed': reportData
+                  .map(feature => feature.elements.filter(scenario => show.passed && scenario.status === 'passed')
+                                                  .length)
+                  .reduce((agg, val) => agg + val, 0),
+      'failed': reportData
+                  .map(feature => feature.elements.filter(scenario => show.failed && scenario.status === 'failed')
+                                                  .length)
+                  .reduce((agg, val) => agg + val, 0),
+      'skipped': reportData
+                  .map(feature => feature.elements.filter(scenario => show.skipped && scenario.status === 'skipped')
+                                                  .length)
+                  .reduce((agg, val) => agg + val, 0),
+      'undefined': reportData
+                     .map(feature => feature.elements.filter(scenario => show.undefined && scenario.status === 'undefined')
+                                                     .length)
+                     .reduce((agg, val) => agg + val, 0),
     },
     'steps': {
-      'passed': reportData.map(feature => feature.elements.map(scenario => scenario.steps.filter(step => step.result && step.result.status === 'passed').length).reduce((agg, val) => agg + val)).reduce((agg, val) => agg + val),
-      'failed': reportData.map(feature => feature.elements.map(scenario => scenario.steps.filter(step => step.result && step.result.status === 'failed').length).reduce((agg, val) => agg + val)).reduce((agg, val) => agg + val),
-      'skipped': reportData.map(feature => feature.elements.map(scenario => scenario.steps.filter(step => step.result === undefined).length).reduce((agg, val) => agg + val)).reduce((agg, val) => agg + val),
-      'undefined': reportData.map(feature => feature.elements.map(scenario => scenario.steps.filter(step => step.result && step.result.status === 'undefined').length).reduce((agg, val) => agg + val)).reduce((agg, val) => agg + val),
+      'passed': reportData
+                  .map(feature => feature.elements
+                                         .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                         .map(scenario => scenario.steps
+                                                                  .filter(step => step.result
+                                                                                  && step.result.status === 'passed')
+                                                                  .length)
+                                         .reduce((agg, val) => agg + val, 0))
+                  .reduce((agg, val) => agg + val, 0),
+      'failed': reportData
+                  .map(feature => feature.elements
+                                         .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                         .map(scenario => scenario.steps
+                                                                  .filter(step => step.result
+                                                                                  && step.result.status === 'failed')
+                                                                  .length)
+                                         .reduce((agg, val) => agg + val, 0))
+                  .reduce((agg, val) => agg + val, 0),
+      'skipped': reportData
+                   .map(feature => feature.elements
+                                          .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                          .map(scenario => scenario.steps
+                                                                   .filter(step => step.result === undefined
+                                                                                   || step.result.status === 'skipped')
+                                                                   .length)
+                                          .reduce((agg, val) => agg + val, 0))
+                   .reduce((agg, val) => agg + val, 0),
+      'undefined': reportData
+                     .map(feature => feature.elements
+                                            .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                            .map(scenario => scenario.steps
+                                                                     .filter(step => show.undefined
+                                                                                     && step.result
+                                                                                     && step.result.status === 'undefined')
+                                                                     .length)
+                                            .reduce((agg, val) => agg + val, 0))
+                     .reduce((agg, val) => agg + val, 0),
     },
   }
 }
@@ -118,6 +190,8 @@ const renderStats = stats => {
 
 
 const toggle = (event, status) => {
+  // FIXME: calling processJSON forgets details expand/collapse settings
+  processJSON({'target': document.querySelector('#controls [name="file"]')});
   document.querySelectorAll('.scenario-'+status).forEach(element => {
     element.style.display = event.target.checked ? 'list-item' : 'none';
   });
@@ -216,18 +290,11 @@ summary,
 }
 
 
-.feature-skipped > details > summary .name,
-.scenario-skipped .name,
-.step .keyword {
-  color: var(--color-skipped);
-  filter: brightness(80%);
-}
-
-.feature-passed .name,
-.scenario-passed .name,
+.feature-passed > details > summary .name,
+.scenario-passed > details > summary .name,
 .step-passed .keyword,
 .step-passed .name {
-  color: var(--color-passed);
+  color: var(--color-passed) !important;
   filter: brightness(80%);
 }
 
@@ -238,6 +305,14 @@ summary,
   color: var(--color-failed) !important;
   filter: brightness(80%);
 }
+
+.feature-skipped > details > summary .name,
+.scenario-skipped .name,
+.step .keyword {
+  color: var(--color-skipped);
+  filter: brightness(80%);
+}
+
 
 .error {
   overflow-x: auto;  
@@ -272,9 +347,9 @@ summary,
 <!-- TODO: expand/collapse all -->
 
 <div id="pie-stats">
-  <div class="steps" style="background: lightgrey"><div><span class="total">0</span>&nbsp;Steps</div></div>
-  <div class="scenarios" style="background: lightgrey"><div><span class="total">0</span>&nbsp;Scenarios</div></div>
   <div class="features" style="background: lightgrey"><div><span class="total">0</span>&nbsp;Features</div></div>
+  <div class="scenarios" style="background: lightgrey"><div><span class="total">0</span>&nbsp;Scenarios</div></div>
+  <div class="steps" style="background: lightgrey"><div><span class="total">0</span>&nbsp;Steps</div></div>
 </div>
 
 <ul id="report"></ul>
