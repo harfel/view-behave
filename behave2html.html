@@ -24,7 +24,8 @@ const renderFeature = featureData => {
   node.classList.add('feature-'+featureData.status);
   node.querySelector('.tags').textContent = renderTags(featureData.tags);
   node.querySelector('.name').textContent = featureData.name;
-  node.querySelector('.location').textContent = featureData.location;
+  node.querySelector('.tags').setAttribute('title', featureData.location);
+  node.querySelector('.name').setAttribute('title', featureData.location);
   const elements = node.querySelector('.elements');
   featureData.elements.forEach(scenarioData => {
     switch (scenarioData.keyword) {
@@ -45,7 +46,8 @@ const renderScenario = scenarioData => {
   node.classList.add('scenario-'+scenarioData.status);
   node.querySelector('.tags').textContent = renderTags(scenarioData.tags);
   node.querySelector('.name').textContent = scenarioData.name;
-  node.querySelector('.location').textContent = scenarioData.location;
+  node.querySelector('.tags').setAttribute('title', scenarioData.location);
+  node.querySelector('.name').setAttribute('title', scenarioData.location);
   const elements = node.querySelector('.steps');
   scenarioData.steps.forEach(stepData => elements.append(renderStep(stepData)));
   return node;
@@ -62,7 +64,8 @@ const renderStep = stepData => {
   }
   node.querySelector('.keyword').textContent = stepData.keyword;
   node.querySelector('.name').textContent = stepData.name;
-  node.querySelector('.location').textContent = stepData.location;
+  node.querySelector('.keyword').setAttribute('title', stepData.location);
+  node.querySelector('.name').setAttribute('title', stepData.location);
   if (stepData.result) {
     node.querySelector('.duration').textContent = parseInt(1000*stepData.result.duration)+'ms';
   }
@@ -73,7 +76,11 @@ const renderStep = stepData => {
     node.querySelector('.text').style.display = 'none';
   }
   if (stepData.result && stepData.result.error_message) {
-    node.querySelector('.error').textContent = stepData.result.error_message.join('\n');
+    if (stepData.result.error_message.join) {
+      node.querySelector('.error').textContent = stepData.result.error_message.join('\n');
+    } else {
+      node.querySelector('.error').textContent = stepData.result.error_message;
+    }
   }
   else {
     node.querySelector('.error').style.display = 'none';
@@ -93,51 +100,64 @@ const calculateStats = reportData => {
     'features': {
       'passed': reportData
                   .filter(feature => feature.elements
-                                            .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                            .filter(scenario => scenario.type === 'scenario'
+                                                                && show[scenario.status])
                                             .length
                                      && feature.status === 'passed')
                   .length,
       'failed': reportData
                   .filter(feature => feature.elements
-                                            .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                            .filter(scenario => scenario.type === 'scenario'
+                                                                && show[scenario.status])
                                             .length
                                      && feature.status === 'failed')
                   .length,
       'skipped': reportData
                   .filter(feature => feature.elements
-                                            .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                            .filter(scenario => scenario.type === 'scenario'
+                                                                && show[scenario.status])
                                             .length
                                      && feature.status === 'skipped')
                   .length,
       'undefined': reportData
                   .filter(feature => feature.elements
-                                            .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                            .filter(scenario => scenario.type === 'scenario'
+                                                                && show[scenario.status])
                                             .length
                                      && feature.status === 'undefined')
                   .length,
     },
     'scenarios': {
       'passed': reportData
-                  .map(feature => feature.elements.filter(scenario => show.passed && scenario.status === 'passed')
-                                                  .length)
+                  .map(feature => feature.elements
+                                         .filter(scenario => show.passed
+                                                             && scenario.status === 'passed')
+                                         .length)
                   .reduce((agg, val) => agg + val, 0),
       'failed': reportData
-                  .map(feature => feature.elements.filter(scenario => show.failed && scenario.status === 'failed')
-                                                  .length)
+                  .map(feature => feature.elements
+                                         .filter(scenario => show.failed
+                                                             && scenario.status === 'failed')
+                                         .length)
                   .reduce((agg, val) => agg + val, 0),
       'skipped': reportData
-                  .map(feature => feature.elements.filter(scenario => show.skipped && scenario.status === 'skipped')
-                                                  .length)
+                  .map(feature => feature.elements
+                                         .filter(scenario => show.skipped
+                                                             && scenario.status === 'skipped')
+                                         .length)
                   .reduce((agg, val) => agg + val, 0),
       'undefined': reportData
-                     .map(feature => feature.elements.filter(scenario => show.undefined && scenario.status === 'undefined')
-                                                     .length)
+                     .map(feature => feature.elements
+                                            .filter(scenario => show.undefined
+                                                                && scenario.status === 'undefined')
+                                            .length)
                      .reduce((agg, val) => agg + val, 0),
     },
     'steps': {
       'passed': reportData
                   .map(feature => feature.elements
-                                         .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                         .filter(scenario => scenario.type === 'scenario'
+                                                             && show[scenario.status])
                                          .map(scenario => scenario.steps
                                                                   .filter(step => step.result
                                                                                   && step.result.status === 'passed')
@@ -146,7 +166,8 @@ const calculateStats = reportData => {
                   .reduce((agg, val) => agg + val, 0),
       'failed': reportData
                   .map(feature => feature.elements
-                                         .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                         .filter(scenario => scenario.type === 'scenario'
+                                                             && show[scenario.status])
                                          .map(scenario => scenario.steps
                                                                   .filter(step => step.result
                                                                                   && step.result.status === 'failed')
@@ -155,7 +176,8 @@ const calculateStats = reportData => {
                   .reduce((agg, val) => agg + val, 0),
       'skipped': reportData
                    .map(feature => feature.elements
-                                          .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                          .filter(scenario => scenario.type === 'scenario'
+                                                              && show[scenario.status])
                                           .map(scenario => scenario.steps
                                                                    .filter(step => step.result === undefined
                                                                                    || step.result.status === 'skipped')
@@ -164,7 +186,8 @@ const calculateStats = reportData => {
                    .reduce((agg, val) => agg + val, 0),
       'undefined': reportData
                      .map(feature => feature.elements
-                                            .filter(scenario => scenario.type === 'scenario' && show[scenario.status])
+                                            .filter(scenario => scenario.type === 'scenario'
+                                                                && show[scenario.status])
                                             .map(scenario => scenario.steps
                                                                      .filter(step => show.undefined
                                                                                      && step.result
@@ -182,7 +205,11 @@ const renderStats = stats => {
     const cumSum = values.map((sum => value => sum += value)(0)); // https://stackoverflow.com/a/55261098/4415526
     const perc = cumSum.map(value => (100*value/cumSum[cumSum.length-1])+'%');
     const element = document.querySelector('#pie-stats .'+category);
-    element.setAttribute('title', `${values[0]} passed, ${values[1]} failed, ${values[2]} skipped, ${values[3]} undefined`); 
+    if (values[0] == 1) {
+      element.setAttribute('title', `${values[0]} ${category.substr(0, category.length-1)} passed, ${values[1]} failed, ${values[2]} skipped, ${values[3]} undefined`); 
+    } else {
+      element.setAttribute('title', `${values[0]} ${category} passed, ${values[1]} failed, ${values[2]} skipped, ${values[3]} undefined`); 
+    }
     element.style.background = `conic-gradient(var(--color-passed) 0 ${perc[0]}, var(--color-failed) 0 ${perc[1]}, var(--color-skipped) 0 ${perc[2]}, var(--color-undefined) 0 100%)`;
     element.querySelector('.total').textContent = cumSum[cumSum.length-1];
   }
@@ -204,7 +231,7 @@ const toggle = (event, status) => {
   --color-passed: #8BC34A;
   --color-failed: #FF5722;
   --color-skipped: #00BCD4;
-  --color-undefined: #9E9E9E;
+  --color-undefined: #ffc107;
 }
 
 body {
@@ -260,17 +287,13 @@ body {
 }
 
 summary {
+  width: fit-content;
   cursor: pointer;
 }
 
 summary,
 .step > div {
   position: relative;
-}
-
-.location {
-  position: absolute;
-  right: 0;
 }
 
 .duration {
@@ -283,7 +306,6 @@ summary,
   font-weight: bold;
 }
 
-.location,
 .duration,
 .tags {
   color: grey;
@@ -308,11 +330,19 @@ summary,
 
 .feature-skipped > details > summary .name,
 .scenario-skipped .name,
-.step .keyword {
+.step .keyword ,
+.step .name {
   color: var(--color-skipped);
   filter: brightness(80%);
 }
 
+.feature-undefined > details > summary .name,
+.scenario-undefined .name,
+.step-undefined .keyword,
+.step-undefined .name {
+  color: var(--color-undefined);
+  filter: brightness(80%);
+}
 
 .error {
   overflow-x: auto;  
@@ -364,7 +394,6 @@ summary,
         <span class="tags"></span>
         Feature:
         <span class="name"></span>
-        <span class="location"></span>
       </summary>
       <ul class="elements"></ul>
     </details>
@@ -376,7 +405,6 @@ summary,
       <summary>
         <span class="tags"></span>
         <span class="name"></span>
-        <span class="location"></span>
       </summary>
       <ol class="steps"></ol>
     </details>
@@ -387,7 +415,6 @@ summary,
     <div>
       <span class="keyword"></span>
       <span class="name"></span>
-      <span class="location"></span>
       <span class="duration"></span>
     </div>
     <pre class="text"></pre>
